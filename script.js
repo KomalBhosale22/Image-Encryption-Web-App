@@ -1,66 +1,112 @@
-async function encryptImage() {
-    const fileInput = document.getElementById("encryptFile").files[0];
-    const password = document.getElementById("encryptPassword").value;
+// Add a small header to identify encrypted files
+const ENCRYPTION_HEADER = "IMGCRYPT::";
 
-    if (!fileInput || !password) {
+async function encryptImage() {
+    const fileInput = document.getElementById('encryptFile');
+    const password = document.getElementById('encryptPassword').value;
+
+    if (!fileInput.files.length || !password) {
         alert("Please select an image and enter a password.");
         return;
     }
 
-    const fileData = await fileInput.arrayBuffer();
+    const file = fileInput.files[0];
+    const arrayBuffer = await file.arrayBuffer();
+
+    // Convert password to key
     const keyMaterial = await getKeyMaterial(password);
-    const key = await getKey(keyMaterial, "encrypt");
+    const key = await getKey(keyMaterial);
 
-    const iv = crypto.getRandomValues(new Uint8Array(12));
-    const encrypted = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, fileData);
+    // Encrypt
+    const encryptedContent = await crypto.subtle.encrypt(
+        { name: "AES-GCM", iv: new Uint8Array(12) },
+        key,
+        arrayBuffer
+    );
 
-    const blob = new Blob([iv, encrypted]);
-    downloadFile(blob, "encrypted_image.bin");
+    // Add header before encrypted data
+    const headerBytes = new TextEncoder().encode(ENCRYPTION_HEADER);
+    const finalData = new Uint8Array(headerBytes.length + encryptedContent.byteLength);
+    finalData.set(headerBytes, 0);
+    finalData.set(new Uint8Array(encryptedContent), headerBytes.length);
+
+    // Download encrypted file
+    downloadFile(finalData, "encrypted.imgcrypt");
 }
 
 async function decryptImage() {
-    const fileInput = document.getElementById("decryptFile").files[0];
-    const password = document.getElementById("decryptPassword").value;
+    const fileInput = document.getElementById('decryptFile');
+    const password = document.getElementById('decryptPassword').value;
 
-    if (!fileInput || !password) {
+    if (!fileInput.files.length || !password) {
         alert("Please select a file and enter a password.");
         return;
     }
 
-    const fileData = await fileInput.arrayBuffer();
-    const iv = fileData.slice(0, 12);
-    const encryptedData = fileData.slice(12);
+    const file = fileInput.files[0];
+    const arrayBuffer = await file.arrayBuffer();
+    const uint8Array = new Uint8Array(arrayBuffer);
 
-    const keyMaterial = await getKeyMaterial(password);
-    const key = await getKey(keyMaterial, "decrypt");
+    // Check for header
+    const headerBytes = uint8Array.slice(0, ENCRYPTION_HEADER.length);
+    const headerText = new TextDecoder().decode(headerBytes);
+
+    if (headerText !== ENCRYPTION_HEADER) {
+        alert("Please upload a valid encrypted image file.");
+        return;
+    }
+
+    // Extract only the encrypted part
+    const encryptedBytes = uint8Array.slice(ENCRYPTION_HEADER.length);
 
     try {
-        const decrypted = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, encryptedData);
-        const blob = new Blob([decrypted]);
-        downloadFile(blob, "decrypted_image.png");
-    } catch (error) {
-        alert("Decryption failed. Check your password.");
+        const keyMaterial = await getKeyMaterial(password);
+        const key = await getKey(keyMaterial);
+
+        const decryptedContent = await crypto.subtle.decrypt(
+            { name: "AES-GCM", iv: new Uint8Array(12) },
+            key,
+            encryptedBytes
+        );
+
+        downloadFile(decryptedContent, "decrypted.png");
+    } catch (err) {
+        alert("Incorrect password.");
     }
 }
 
-function downloadFile(blob, fileName) {
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = fileName;
-    link.click();
+function downloadFile(data, filename) {
+    const blob = new Blob([data]);
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
 }
 
-function getKeyMaterial(password) {
-    const enc = new TextEncoder();
-    return crypto.subtle.importKey("raw", enc.encode(password), { name: "PBKDF2" }, false, ["deriveKey"]);
+async function getKeyMaterial(password) {
+    return crypto.subtle.importKey(
+        "raw",
+        new TextEncoder().encode(password),
+        { name: "PBKDF2" },
+        false,
+        ["deriveBits", "deriveKey"]
+    );
 }
 
-function getKey(keyMaterial, usage) {
+async function getKey(keyMaterial) {
     return crypto.subtle.deriveKey(
-        { name: "PBKDF2", salt: new Uint8Array(16), iterations: 100000, hash: "SHA-256" },
+        {
+            name: "PBKDF2",
+            salt: new Uint8Array(16),
+            iterations: 100000,
+            hash: "SHA-256"
+        },
         keyMaterial,
         { name: "AES-GCM", length: 256 },
         false,
-        [usage]
+        ["encrypt", "decrypt"]
     );
 }
