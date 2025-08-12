@@ -5,17 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Image Encryption Web App</title>
     <link rel="stylesheet" href="style.css">
-    <style>
-        /* Optional preview styling */
-        .preview {
-            margin-top: 10px;
-            max-width: 100%;
-            max-height: 200px;
-            border: 1px solid #ccc;
-            border-radius: 8px;
-            display: none;
-        }
-    </style>
 </head>
 <body>
     <div class="container">
@@ -25,15 +14,13 @@
         <div class="card">
             <h2>Encrypt Image</h2>
             <input type="file" id="encryptFile" accept="image/*">
-            <img id="encryptPreview" class="preview" alt="Encryption Preview">
             <input type="password" id="encryptPassword" placeholder="Enter password">
             <button onclick="encryptImage()">Encrypt & Download</button>
         </div>
 
         <div class="card">
             <h2>Decrypt Image</h2>
-            <input type="file" id="decryptFile" accept="image/*">
-            <img id="decryptPreview" class="preview" alt="Decryption Preview">
+            <input type="file" id="decryptFile">
             <input type="password" id="decryptPassword" placeholder="Enter password">
             <button onclick="decryptImage()">Decrypt & Download</button>
         </div>
@@ -44,30 +31,5 @@
     </div>
 
     <script src="script.js"></script>
-    <script>
-        // Preview function for encryption
-        document.getElementById('encryptFile').addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            const preview = document.getElementById('encryptPreview');
-            if (file) {
-                preview.src = URL.createObjectURL(file);
-                preview.style.display = 'block';
-            } else {
-                preview.style.display = 'none';
-            }
-        });
-
-        // Preview function for decryption
-        document.getElementById('decryptFile').addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            const preview = document.getElementById('decryptPreview');
-            if (file) {
-                preview.src = URL.createObjectURL(file);
-                preview.style.display = 'block';
-            } else {
-                preview.style.display = 'none';
-            }
-        });
-    </script>
 </body>
 </html>
