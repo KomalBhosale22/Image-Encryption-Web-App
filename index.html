@@ -3,33 +3,63 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Image Encryption Web App</title>
-    <link rel="stylesheet" href="style.css">
+    <title>Image Upload with Preview</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 30px;
+            text-align: center;
+        }
+        .preview {
+            margin-top: 20px;
+        }
+        .preview img {
+            max-width: 300px;
+            border-radius: 10px;
+            border: 1px solid #ccc;
+        }
+    </style>
 </head>
 <body>
-    <div class="container">
-        <h1>Image Encryption Web App</h1>
-        <p class="subtitle">Encrypt and decrypt your images securely in the browser. No data is uploaded.</p>
 
-        <div class="card">
-            <h2>Encrypt Image</h2>
-            <input type="file" id="encryptFile" accept="image/*">
-            <input type="password" id="encryptPassword" placeholder="Enter password">
-            <button onclick="encryptImage()">Encrypt & Download</button>
-        </div>
+    <h1>Upload Image with Preview</h1>
+    
+    <form id="uploadForm">
+        <input type="file" id="imageInput" accept="image/*" required>
+        <br><br>
+        <button type="submit">Upload</button>
+    </form>
 
-        <div class="card">
-            <h2>Decrypt Image</h2>
-            <input type="file" id="decryptFile">
-            <input type="password" id="decryptPassword" placeholder="Enter password">
-            <button onclick="decryptImage()">Decrypt & Download</button>
-        </div>
-
-        <footer>
-            <p>🔒 All encryption happens locally in your browser.</p>
-        </footer>
+    <div class="preview" id="previewContainer">
+        <p>No image selected</p>
     </div>
 
-    <script src="script.js"></script>
+    <script>
+        const imageInput = document.getElementById("imageInput");
+        const previewContainer = document.getElementById("previewContainer");
+
+        imageInput.addEventListener("change", function () {
+            const file = this.files[0];
+            previewContainer.innerHTML = "";
+
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    const img = document.createElement("img");
+                    img.src = e.target.result;
+                    previewContainer.appendChild(img);
+                }
+                reader.readAsDataURL(file);
+            } else {
+                previewContainer.innerHTML = "<p>No image selected</p>";
+            }
+        });
+
+        document.getElementById("uploadForm").addEventListener("submit", function (event) {
+            event.preventDefault();
+            alert("This is just a preview demo. For actual upload, connect to backend.");
+        });
+    </script>
+
 </body>
 </html>
