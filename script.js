@@ -102,6 +102,22 @@ if (decryptFileInput) {
       if (decryptBtn) decryptBtn.disabled = true;
       return;
     }
+    // --- NEW: Enable decrypt button when both file & password are present ---
+if (decryptFileInput && decryptPasswordInput && decryptBtn) {
+  const checkDecryptReady = () => {
+    const fileChosen = decryptFileInput.files.length > 0;
+    const passwordEntered = decryptPasswordInput.value.trim() !== "";
+    if (fileChosen && passwordEntered) {
+      decryptBtn.disabled = false;
+    } else {
+      decryptBtn.disabled = true;
+    }
+  };
+
+  decryptFileInput.addEventListener('change', checkDecryptReady);
+  decryptPasswordInput.addEventListener('input', checkDecryptReady);
+}
+
 
     // Attempt to read as text and parse JSON (fast for JSON .enc files)
     let text;
@@ -244,3 +260,4 @@ async function decryptImage() {
     alert('Incorrect password or corrupted encrypted file.');
   }
 }
+
