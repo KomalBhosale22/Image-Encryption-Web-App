@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Encryption Web App</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Image Encryption Web App</h1>
+        <p class="subtitle">Encrypt and decrypt your images securely in the browser. No data is uploaded.</p>
+
+        <div class="card">
+            <h2>Encrypt Image</h2>
+            <input type="file" id="encryptFile" accept="image/*">
+            <input type="password" id="encryptPassword" placeholder="Enter password">
+            <button onclick="encryptImage()">Encrypt & Download</button>
+        </div>
+
+        <div class="card">
+            <h2>Decrypt Image</h2>
+            <input type="file" id="decryptFile">
+            <input type="password" id="decryptPassword" placeholder="Enter password">
+            <button onclick="decryptImage()">Decrypt & Download</button>
+        </div>
+
+        <footer>
+            <p>🔒 All encryption happens locally in your browser.</p>
+        </footer>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
