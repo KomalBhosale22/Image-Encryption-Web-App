@@ -38,7 +38,6 @@ async function deriveKeyFromPassword(password, salt, iterations = 150000) {
     false,
     ['deriveKey']
   );
-  // allow salt as ArrayBuffer or Uint8Array
   const saltBuf = (salt instanceof Uint8Array) ? salt : new Uint8Array(salt);
   return crypto.subtle.deriveKey(
     { name: 'PBKDF2', salt: saltBuf, iterations, hash: 'SHA-256' },
@@ -60,7 +59,7 @@ function downloadBlob(blob, filename) {
   URL.revokeObjectURL(url);
 }
 
-// --- hookup to DOM elements (expects ids from your HTML) ---
+// --- hookup to DOM elements ---
 const encryptFileInput = document.getElementById('encryptFile');
 const encryptPreview = document.getElementById('encryptPreview');
 const encryptPasswordInput = document.getElementById('encryptPassword');
@@ -72,17 +71,28 @@ const decryptPasswordInput = document.getElementById('decryptPassword');
 const encryptBtn = document.querySelector('button[onclick="encryptImage()"]');
 const decryptBtn = document.querySelector('button[onclick="decryptImage()"]');
 
-// if the buttons exist, ensure decrypt disabled until valid file is chosen
 if (decryptBtn) decryptBtn.disabled = true;
 
-// --- preview for encryption input (unchanged) ---
+// --- Enable decrypt button when file & password are present ---
+const checkDecryptReady = () => {
+  const fileChosen = decryptFileInput.files.length > 0;
+  const passwordEntered = decryptPasswordInput.value.trim() !== "";
+  if (fileChosen && passwordEntered) {
+    decryptBtn.disabled = false;
+  } else {
+    decryptBtn.disabled = true;
+  }
+};
+decryptFileInput.addEventListener('change', checkDecryptReady);
+decryptPasswordInput.addEventListener('input', checkDecryptReady);
+
+// --- preview for encryption input ---
 if (encryptFileInput && encryptPreview) {
   encryptFileInput.addEventListener('change', (e) => {
     const file = e.target.files[0];
     if (file) {
       encryptPreview.src = URL.createObjectURL(file);
       encryptPreview.style.display = 'block';
-      // revoke old URLs later is optional; browser will manage on unload
     } else {
       encryptPreview.style.display = 'none';
     }
@@ -90,82 +100,51 @@ if (encryptFileInput && encryptPreview) {
 }
 
 // --- intelligent check for decrypt input ---
-// This distinguishes:
-//  - valid .enc (JSON with ciphertext,salt,iv)  -> enable decrypt
-//  - plain image file (jpg/png)                -> show preview + message to upload .enc
-//  - other file / invalid JSON                 -> show "Please upload a valid encrypted file"
 if (decryptFileInput) {
   decryptFileInput.addEventListener('change', async (e) => {
     const file = e.target.files[0];
     decryptPreview.style.display = 'none';
     if (!file) {
-      if (decryptBtn) decryptBtn.disabled = true;
+      checkDecryptReady();
       return;
     }
-    // --- NEW: Enable decrypt button when both file & password are present ---
-if (decryptFileInput && decryptPasswordInput && decryptBtn) {
-  const checkDecryptReady = () => {
-    const fileChosen = decryptFileInput.files.length > 0;
-    const passwordEntered = decryptPasswordInput.value.trim() !== "";
-    if (fileChosen && passwordEntered) {
-      decryptBtn.disabled = false;
-    } else {
-      decryptBtn.disabled = true;
-    }
-  };
 
-  decryptFileInput.addEventListener('change', checkDecryptReady);
-  decryptPasswordInput.addEventListener('input', checkDecryptReady);
-}
-
-
-    // Attempt to read as text and parse JSON (fast for JSON .enc files)
     let text;
     try {
       text = await file.text();
     } catch (err) {
-      // reading failed (shouldn't normally happen)
       alert('Cannot read file. Please try again.');
-      if (decryptBtn) decryptBtn.disabled = true;
+      checkDecryptReady();
       return;
     }
 
-    // Try parse JSON format first (this is the app's .enc format)
     let payload;
     try {
       payload = JSON.parse(text);
     } catch (err) {
-      payload = null; // not JSON
+      payload = null;
     }
 
     if (payload && payload.ciphertext && payload.salt && payload.iv) {
-      // Looks like a valid encrypted file produced by this app
-      if (decryptBtn) decryptBtn.disabled = false;
-      // Don't show image preview because the file is encrypted JSON
-      decryptPreview.style.display = 'none';
-      // optional: show subtle indicator in console
       console.log('Encrypted file detected: ready to decrypt.');
+      checkDecryptReady();
       return;
     }
 
-    // Not valid encrypted JSON -> inform the user.
-    // If it's an actual image, show preview and a clearer message (likely user picked the original image by mistake)
     if (file.type && file.type.startsWith('image/')) {
-      // show image preview so user notices the mistake
       decryptPreview.src = URL.createObjectURL(file);
       decryptPreview.style.display = 'block';
-      if (decryptBtn) decryptBtn.disabled = true;
       alert('This looks like a regular image file, not an encrypted file. Please upload the .enc file created by the app.');
+      checkDecryptReady();
       return;
     }
 
-    // Generic fallback for other file types
-    if (decryptBtn) decryptBtn.disabled = true;
     alert('Please upload a valid encrypted file (.enc) created by this app.');
+    checkDecryptReady();
   });
 }
 
-// --- encryption logic (keeps previous behavior) ---
+// --- encryption logic ---
 async function encryptImage() {
   const file = encryptFileInput.files[0];
   const password = encryptPasswordInput.value;
@@ -200,7 +179,7 @@ async function encryptImage() {
   }
 }
 
-// --- decryption logic (validates format first; shows "Incorrect password" on decrypt failure) ---
+// --- decryption logic ---
 async function decryptImage() {
   const file = decryptFileInput.files[0];
   const password = decryptPasswordInput.value;
@@ -208,7 +187,6 @@ async function decryptImage() {
   if (!file) { alert('Please select the .enc file to decrypt.'); return; }
   if (!password) { alert('Enter password'); return; }
 
-  // Read as text and parse JSON (this should match the file produced by encryptImage)
   let text;
   try {
     text = await file.text();
@@ -224,7 +202,6 @@ async function decryptImage() {
     return;
   }
 
-  // Validate expected fields
   if (!payload.ciphertext || !payload.salt || !payload.iv) {
     alert('Please upload a valid encrypted file (.enc) created by this app.');
     return;
@@ -239,25 +216,20 @@ async function decryptImage() {
 
     const plainBuf = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: new Uint8Array(ivBuf) }, key, cipherBuf);
 
-    // Show preview and enable download
     const mimeType = payload.type || 'image/png';
     const blob = new Blob([plainBuf], { type: mimeType });
     const url = URL.createObjectURL(blob);
 
-    // show preview if an <img id="decryptPreview"> exists
     if (decryptPreview) {
       decryptPreview.src = url;
       decryptPreview.style.display = 'block';
     }
 
-    // auto-download
     downloadBlob(blob, payload.filename || 'decrypted-image');
 
     alert('Decryption successful.');
   } catch (err) {
     console.error(err);
-    // decryption failed -> likely incorrect password (file had correct JSON structure)
     alert('Incorrect password or corrupted encrypted file.');
   }
 }
-
